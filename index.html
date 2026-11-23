@@ -562,6 +562,39 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
       <button class="btn btn-green" style="width:100%;" onclick="addFoodItem()">+ إضافة إلى وجبات اليوم</button>
     </div>
 
+    
+<!-- Personal Food Database -->
+<div class="card">
+  <div class="card-title">
+    <span>🗃️ قاعدة الأطعمة الشخصية</span>
+  </div>
+
+  <div style="display:grid; gap:8px;">
+    <input id="newFoodName" type="text"
+      placeholder="اسم الطعام (مثلاً: شوفان كامل)" />
+
+    <select id="newFoodCategory">
+      <option value="food">🍗 أطعمة</option>
+      <option value="fruit">🍎 فواكه وألبان</option>
+    </select>
+
+    <div class="form-row">
+      <input id="newFoodCal" type="number" min="0"
+        step="0.1" placeholder="السعرات / 100غ" />
+      <input id="newFoodPro" type="number" min="0"
+        step="0.1" placeholder="البروتين / 100غ" />
+    </div>
+
+    <button class="btn btn-green" style="width:100%;"
+      onclick="savePersonalFood()">
+      + حفظ الطعام في قاعدة البيانات
+    </button>
+  </div>
+
+  <div id="personalFoodsList" style="margin-top:12px;"></div>
+</div>
+
+
     <!-- Logged Meals -->
     <div class="card">
       <div class="card-title"><span>🍽️ سجل الوجبات المحسوبة اليوم</span></div>
@@ -2269,6 +2302,162 @@ function syncScheduleToCloud(manualNotify = false, resetSent = false) {
     document.getElementById("waterBar").style.width = pct + "%";
   }
 
+  
+// Personal Food Database
+const PERSONAL_FOODS_KEY = "aburaslan_personal_foods_v1";
+
+function getPersonalFoods() {
+  try {
+    const foods = JSON.parse(
+      localStorage.getItem(PERSONAL_FOODS_KEY) || "[]"
+    );
+    return Array.isArray(foods) ? foods : [];
+  } catch {
+    return [];
+  }
+}
+
+function savePersonalFoods(foods) {
+  localStorage.setItem(
+    PERSONAL_FOODS_KEY,
+    JSON.stringify(foods)
+  );
+}
+
+function savePersonalFood() {
+  const name = document.getElementById("newFoodName").value.trim();
+  const category = document.getElementById("newFoodCategory").value;
+  const cal = Number(document.getElementById("newFoodCal").value);
+  const pro = Number(document.getElementById("newFoodPro").value);
+
+  if (!name || !Number.isFinite(cal) || !Number.isFinite(pro)
+      || cal < 0 || pro < 0 || cal > 1000 || pro > 100) {
+    showToast("⚠️ أدخل اسم الطعام والقيم الغذائية بشكل صحيح");
+    return;
+  }
+
+  const foods = getPersonalFoods();
+
+  if (foods.some(f => f.name.trim().toLowerCase() === name.toLowerCase())) {
+    showToast("هذا الطعام موجود مسبقاً");
+    return;
+  }
+
+  foods.push({
+    id: "pf_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+    name,
+    category,
+    cal,
+    pro
+  });
+
+  savePersonalFoods(foods);
+
+  document.getElementById("newFoodName").value = "";
+  document.getElementById("newFoodCal").value = "";
+  document.getElementById("newFoodPro").value = "";
+
+  renderPersonalFoods();
+  populateFoodSelect();
+
+  showToast("✅ تم حفظ الطعام بنجاح");
+}
+
+function renderPersonalFoods() {
+  const box = document.getElementById("personalFoodsList");
+  const foods = getPersonalFoods();
+
+  box.innerHTML = "";
+
+  if (!foods.length) {
+    box.textContent = "لم تضف أي أطعمة شخصية بعد";
+    return;
+  }
+
+  foods.forEach(food => {
+    const row = document.createElement("div");
+    row.className = "meal-row";
+
+    const info = document.createElement("div");
+    info.style.flex = "1";
+
+    const title = document.createElement("strong");
+    title.textContent = food.name;
+
+    const details = document.createElement("div");
+    details.style.fontSize = "11px";
+    details.style.color = "var(--muted)";
+    details.textContent =
+      `${food.cal} سعرة • ${food.pro}غ بروتين لكل 100غ`;
+
+    info.append(title, details);
+
+    const edit = document.createElement("button");
+    edit.className = "btn";
+    edit.textContent = "✏️";
+    edit.onclick = () => editPersonalFood(food.id);
+
+    const del = document.createElement("button");
+    del.className = "del-btn";
+    del.textContent = "×";
+    del.onclick = () => deletePersonalFood(food.id);
+
+    row.append(info, edit, del);
+    box.appendChild(row);
+  });
+}
+
+function editPersonalFood(id) {
+  const foods = getPersonalFoods();
+  const food = foods.find(f => f.id === id);
+  if (!food) return;
+
+  const name = prompt("اسم الطعام:", food.name);
+  if (name === null || !name.trim()) return;
+
+  const calText = prompt("السعرات لكل 100غ:", food.cal);
+  if (calText === null || calText.trim() === "") return;
+
+  const proText = prompt("البروتين لكل 100غ:", food.pro);
+  if (proText === null || proText.trim() === "") return;
+
+  const cal = Number(calText);
+  const pro = Number(proText);
+
+  if (!Number.isFinite(cal) || !Number.isFinite(pro) ||
+      cal < 0 || cal > 1000 || pro < 0 || pro > 100) {
+    showToast("⚠️ القيم المدخلة غير صحيحة");
+    return;
+  }
+
+  if (foods.some(f => f.id !== id &&
+      f.name.trim().toLowerCase() === name.trim().toLowerCase())) {
+    showToast("يوجد طعام آخر بهذا الاسم");
+    return;
+  }
+
+  food.name = name.trim();
+  food.cal = cal;
+  food.pro = pro;
+
+  savePersonalFoods(foods);
+  renderPersonalFoods();
+  populateFoodSelect();
+  showToast("تم تعديل الطعام");
+}
+
+function deletePersonalFood(id) {
+  if (!confirm("هل تريد حذف هذا الطعام من قائمتك؟")) return;
+
+  const foods = getPersonalFoods().filter(f => f.id !== id);
+  savePersonalFoods(foods);
+
+  renderPersonalFoods();
+  populateFoodSelect();
+  showToast("تم حذف الطعام");
+}
+
+
   // Categorized Food Calculator
   let currentCategory = "food";
   function setFoodCategory(cat) {
@@ -2278,8 +2467,22 @@ function syncScheduleToCloud(manualNotify = false, resetSent = false) {
     populateFoodSelect();
   }
 
-  function getActiveFoodList() {
-    return currentCategory === "food" ? SAVORY_FOODS : SWEET_DAIRY_FOODS;
+
+function getActiveFoodList() {
+  const builtIn = currentCategory === "food"
+    ? SAVORY_FOODS
+    : SWEET_DAIRY_FOODS;
+
+  const personal = getPersonalFoods().filter(
+    f => f.category === currentCategory
+  );
+
+  return [
+    ...builtIn,
+    ...personal
+  ];
+}
+
   }
 
   function populateFoodSelect() {
@@ -2801,6 +3004,7 @@ function syncScheduleToCloud(manualNotify = false, resetSent = false) {
 
   updatePermBanner();
   updateTelegramBadge();
+  renderPersonalFoods();
   populateFoodSelect();
   renderAll(true);
   syncScheduleToCloud();
