@@ -255,6 +255,13 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
 #weightChartBox text[fill="#94a3b8"] { fill:var(--muted); }
 #weightChartBox text[fill="#f59e0b"] { fill:var(--amber); }
 #weightChartBox circle { stroke:var(--card); }
+
+    .checks-col { display:flex; flex-direction:column; align-items:center; gap:6px; flex-shrink:0; }
+.skipbox { width:25px; height:25px; border-radius:7px; border:2px solid var(--red); color:var(--red); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:900; cursor:pointer; opacity:.55; }
+.task-item.skipped { opacity:.5; border-color:rgba(239,68,68,.4); }
+.task-item.skipped .task-text,
+.task-item.skipped .task-sub { text-decoration:line-through; text-decoration-color:var(--red); text-decoration-thickness:2px; }
+.task-item.skipped .skipbox { background:var(--red); color:#fff; opacity:1; }
     
   </style>
 </head>
@@ -973,6 +980,7 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
       snoozeUntil: {},
       alarmFired: {},
       prayers: {},
+      skipped: {},
       meals: [],
       offsets: [],
       eatEnd: null,
@@ -1066,7 +1074,7 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
     getActiveProgram().tasks.forEach(t => {
       if (state.tasks[t.id]) state.water = Math.max(0, state.water - getTaskWater(t));
     });
-    state.tasks = {}; state.completedAt = {};
+    state.tasks = {}; state.skipped = {}; state.completedAt = {};
     state.meals = state.meals.filter(m => !m.taskId);
     state.eatEnd = null; state.lockEnd = null; state.lockOwnerTaskId = null;
     state.dayMode = mode;
@@ -1202,7 +1210,7 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
       return;
     }
     const tasks = getActiveProgram().tasks;
-    const nextTask = tasks.find(t => !state.tasks[t.id]);
+    const nextTask = tasks.find(t => !state.tasks[t.id] && !(state.skipped && state.skipped[t.id]))
     if (!nextTask) {
       currentNextTaskId = null;
       card.style.display = "block";
@@ -1282,7 +1290,7 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
 
     let count = 0;
     tasks.forEach(t => {
-      if (state.tasks[t.id]) return;
+      if (state.tasks[t.id] || (state.skipped && state.skipped[t.id])) return;
       const mins = getTaskMins(t.id);
       if (mins < nowMins - 5) return;
 
@@ -1618,6 +1626,7 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
     unlockAudio();
     const newState = forceDone !== null ? forceDone : !state.tasks[id];
     state.tasks[id] = newState;
+    if (newState && state.skipped) delete state.skipped[id];
     if (newState) delete state.snoozeUntil[id];
 
     const taskObj = getActiveProgram().tasks.find(t => t.id === id);
@@ -1688,16 +1697,38 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
     syncScheduleToCloud();
   }
 
+    function toggleSkip(id) {
+    unlockAudio();
+    if (!state.skipped) state.skipped = {};
+    if (state.skipped[id]) {
+      delete state.skipped[id];
+      showToast("↩️ رجعت المهمة للجدول");
+    } else {
+      if (state.tasks[id]) toggleTask(id, false);   // يلغي أثر الإنجاز أول
+      state.skipped[id] = true;
+      delete state.snoozeUntil[id];
+      if (activeAlarm && activeAlarm.type === "task" && activeAlarm.taskId === id) stopRepeatingAlarm();
+      showToast("✕ تم تخطي المهمة اليوم (اضغط ✕ مرة تانية للتراجع)");
+    }
+    saveState();
+    renderTasks();
+    renderNextStationCard();
+    renderWeeklyStats();
+    syncScheduleToCloud();
+  }
+
   function renderTasks() {
     const list = document.getElementById("tasksList");
     list.innerHTML = "";
     const tasks = getActiveProgram().tasks;
-    let doneCount = 0;
+    let doneCount = 0; let skippedCount = 0;
 
     tasks.forEach(t => {
       const isDone = !!state.tasks[t.id];
       const isSnoozed = !!state.snoozeUntil[t.id];
       if (isDone) doneCount++;
+      const isSkipped = !!(state.skipped && state.skipped[t.id]);
+      if (isSkipped) skippedCount++;
       const schedMins = getTaskMins(t.id);
       const timeLabel = formatMinsArabic(schedMins);
       const alarmHref = buildSystemAlarmIntent(schedMins, t.text);
@@ -1733,12 +1764,15 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
 
       const div = document.createElement("div");
       div.id = "task-row-" + t.id;
-      div.className = "task-item" + (t.defaultItems ? " meal-task" : "") + (isDone ? " done" : "");
+      div.className = "task-item" + (t.defaultItems ? " meal-task" : "") + (isDone ? " done" : "") + (isSkipped ? " skipped" : "");
       div.innerHTML = `
-        <div class="checkbox" onclick="toggleTask('${t.id}')">${isDone ? "✓" : ""}</div>
+        <div class="checks-col">
+          <div class="checkbox" onclick="toggleTask('${t.id}')">${isDone ? "✓" : ""}</div>
+          <div class="skipbox" onclick="toggleSkip('${t.id}')" title="تخطي المهمة اليوم">✕</div>
+        </div>
         <div class="time-col">
           <span class="task-time ${isSnoozed ? "snoozed" : ""}" onclick="openTimeEdit(event, '${t.id}')" title="اضغط لتعديل الوقت">${timeLabel}${isSnoozed ? " 💤" : ""}</span>
-          ${!isDone ? `<a href="${alarmHref}" class="sys-alarm-link" title="ضبط منبّه سامسونغ">⏰ منبّه</a>` : ""}
+          ${!isDone && !isSkipped ? `<a href="${alarmHref}" class="sys-alarm-link" title="ضبط منبّه سامسونغ">⏰ منبّه</a>` : ""}
         </div>
         <div class="task-body">
           <span class="task-text" onclick="toggleTask('${t.id}')">${t.text}</span>
@@ -1748,7 +1782,8 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
       list.appendChild(div);
     });
 
-    document.getElementById("tasksProgress").textContent = `${doneCount}/${tasks.length}`;
+    document.getElementById("tasksProgress").textContent =
+      `${doneCount}/${tasks.length - skippedCount}` + (skippedCount ? ` • ${skippedCount} متخطاة` : "");
   }
 
   // Cloud Telegram Push Integration
@@ -1874,7 +1909,7 @@ function syncScheduleToCloud(manualNotify = false, resetSent = false) {
     });
 
     const completedIds = getActiveProgram().tasks
-      .filter(t => !!state.tasks[t.id])
+      .filter(t => !!state.tasks[t.id] || !!(state.skipped && state.skipped[t.id]))
       .map(t => t.id);
 
     const payloadStr = JSON.stringify({
@@ -2063,7 +2098,7 @@ function syncScheduleToCloud(manualNotify = false, resetSent = false) {
     const tasks = getActiveProgram().tasks;
 
     for (const t of tasks) {
-      if (state.tasks[t.id]) continue;
+      if (state.tasks[t.id] || (state.skipped && state.skipped[t.id])) continue;
 
       if (state.snoozeUntil[t.id]) {
         if (now >= state.snoozeUntil[t.id]) {
@@ -2493,7 +2528,9 @@ function syncScheduleToCloud(manualNotify = false, resetSent = false) {
         if (s.water > 0 || (s.meals && s.meals.length > 0) || doneTasksCount > 0) {
           activeDays++;
           waterPctSum += Math.min(100, (s.water / getWaterGoal(s.dayMode)) * 100);
-          tasksPctSum += (doneTasksCount / prog.tasks.length) * 100;
+          const skippedN = prog.tasks.filter(t => s.skipped && s.skipped[t.id]).length;
+          const denom = prog.tasks.length - skippedN;
+          tasksPctSum += denom > 0 ? (doneTasksCount / denom) * 100 : 0;
           const dayCal = (s.meals || []).reduce((a, b) => a + b.cal, 0);
           if (dayCal > 0 && dayCal <= prog.calGoal + 100) calDaysInTarget++;
         }
@@ -2658,7 +2695,8 @@ function syncScheduleToCloud(manualNotify = false, resetSent = false) {
     const mealsTxt = regularMeals.map(m => `- ${m.name} (${m.cal} سعرة | ${m.pro}غ بروتين)`).join("\n") || "- لا يوجد";
     const offsets = state.offsets || [];
     const offsetsTxt = offsets.map(o => `- ${o.name}: ${o.cal} سعرة (الساعة ${o.time})`).join("\n") || "- لا يوجد (التزام كامل)";
-
+    
+    const skippedTxt = prog.tasks.filter(t => state.skipped && state.skipped[t.id]).map(t => `- ${t.text}`).join("\n") || "- لا يوجد";
     const report = `تقرير يوم (${viewingDateStr}) — [${prog.label}]:
 💧 الماء: ${state.water} / ${getWaterGoal().toLocaleString("en-US")} مل
 🔥 السعرات: ${totalCal} / ${prog.calGoal.toLocaleString("en-US")} سعرة | البروتين: ${totalPro} / ${prog.proGoal} غ
@@ -2666,7 +2704,8 @@ function syncScheduleToCloud(manualNotify = false, resetSent = false) {
 🕌 الصلاة: الفروض (${fardDone}/5) | السنن الرواتب والوتر (${rawatibDone}/12)
 ✅ المهام المنجزة وأوقاتها:\n- ${doneTasks}
 🍽️ الوجبات والأوزان المحسوبة:\n${mealsTxt}
-🚨 سجل الطوارئ (خارج البرنامج):\n${offsetsTxt}`;
+🚨 سجل الطوارئ (خارج البرنامج):\n${offsetsTxt}
+⏭️ مهام متخطاة:\n${skippedTxt}`;
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(report).then(() => showToast("تم نسخ التقرير! الصقه بالمحادثة"));
