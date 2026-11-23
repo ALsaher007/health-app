@@ -384,15 +384,16 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
   </div>
 </div>
 
-  <div id="waterTotalModal" class="modal-overlay">
+  <div id="waterGoalModal" class="modal-overlay">
   <div class="modal-card" style="border-color: var(--blue);">
-    <div class="modal-title">تعديل عدّاد الماء اليومي</div>
-    <div class="modal-desc">اكتب الكمية الإجمالية اللي شربتها اليوم فعلياً (مل):</div>
-    <input type="number" id="waterTotalInput" inputmode="numeric" min="0" step="50" style="font-size:20px; font-weight:800; text-align:center; margin-bottom:14px;" />
-    <div class="btn-grid-2">
-      <button class="btn btn-green" onclick="saveWaterTotal()">حفظ</button>
-      <button class="btn" onclick="closeWaterTotalEdit()">إلغاء</button>
+    <div class="modal-title">تعديل هدف الماء</div>
+    <div class="modal-desc" id="waterGoalDesc">الهدف اليومي (مل) لهالنمط:</div>
+    <input type="number" id="waterGoalInput" inputmode="numeric" min="500" step="50" style="font-size:20px; font-weight:800; text-align:center; margin-bottom:14px;" />
+    <div class="btn-grid-2" style="margin-bottom:8px;">
+      <button class="btn btn-green" onclick="saveWaterGoal()">حفظ</button>
+      <button class="btn" onclick="closeWaterGoalEdit()">إلغاء</button>
     </div>
+    <button class="btn" style="width:100%; font-size:12px;" onclick="resetWaterGoal()">إرجاع الهدف الافتراضي</button>
   </div>
 </div>
 
@@ -476,7 +477,7 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
     <div class="card">
       <div class="card-title">
         <span>💧 عدّاد الماء اليومي</span>
-        <span style="color:var(--blue); font-weight:900; cursor:pointer; border-bottom:1px dashed var(--blue);" onclick="openWaterTotalEdit()"><span id="waterVal">0</span> / <span id="waterGoalLabel">3,250</span> مل ✏️</span>
+        <span style="color:var(--blue); font-weight:900; cursor:pointer;" onclick="openWaterGoalEdit()"><span id="waterVal">0</span> / <span id="waterGoalLabel" style="border-bottom:1px dashed var(--blue);">3,250</span> مل ✏️</span>
       </div>
       <div class="progress-wrap">
         <div id="waterBar" class="progress-fill" style="width:0%; background:var(--blue);"></div>
@@ -2014,7 +2015,7 @@ function syncScheduleToCloud(manualNotify = false, resetSent = false) {
   async function sendSystemNotification(title, body) {
     if (!("Notification" in window) || Notification.permission !== "granted") return;
     try {
-      const reg = await navigator.serviceWorker.getRegistration();
+      const reg = navigator.serviceWorker ? await navigator.serviceWorker.getRegistration() : null;
       if (reg) {
         await reg.showNotification(title, {
           body: body,
@@ -2173,27 +2174,46 @@ function syncScheduleToCloud(manualNotify = false, resetSent = false) {
     renderWeeklyStats();
   }
 
-    function openWaterTotalEdit() {
-    const inp = document.getElementById("waterTotalInput");
-    inp.value = state.water;
-    document.getElementById("waterTotalModal").style.display = "flex";
+      function getGoals() {
+    try { return JSON.parse(localStorage.getItem("aburaslan_goals")) || {}; }
+    catch (e) { return {}; }
+  }
+  function getWaterGoal(mode = state.dayMode) {
+    const g = getGoals()[mode];
+    return g > 0 ? g : PROGRAMS[mode].waterGoal;
+  }
+  function openWaterGoalEdit() {
+    document.getElementById("waterGoalDesc").textContent =
+      `الهدف اليومي (مل) لـ: ${getActiveProgram().label}`;
+    const inp = document.getElementById("waterGoalInput");
+    inp.value = getWaterGoal();
+    document.getElementById("waterGoalModal").style.display = "flex";
     setTimeout(() => inp.select(), 50);
   }
-  function closeWaterTotalEdit() {
-    document.getElementById("waterTotalModal").style.display = "none";
+  function closeWaterGoalEdit() {
+    document.getElementById("waterGoalModal").style.display = "none";
   }
-  function saveWaterTotal() {
-    const v = Math.max(0, parseInt(document.getElementById("waterTotalInput").value) || 0);
-    state.water = v;
-    saveState();
-    renderWater();
-    renderWeeklyStats();
-    closeWaterTotalEdit();
-    showToast(`تم تعيين العدّاد على ${v} مل`);
+  function saveWaterGoal() {
+    const v = parseInt(document.getElementById("waterGoalInput").value);
+    if (!(v >= 500 && v <= 10000)) { showToast("اكتب رقم بين 500 و10000 مل"); return; }
+    const g = getGoals();
+    g[state.dayMode] = v;
+    localStorage.setItem("aburaslan_goals", JSON.stringify(g));
+    renderWater(); renderHeaderModes(); renderWeeklyStats();
+    closeWaterGoalEdit();
+    showToast(`تم تعيين الهدف على ${v.toLocaleString("en-US")} مل`);
+  }
+  function resetWaterGoal() {
+    const g = getGoals();
+    delete g[state.dayMode];
+    localStorage.setItem("aburaslan_goals", JSON.stringify(g));
+    renderWater(); renderHeaderModes(); renderWeeklyStats();
+    closeWaterGoalEdit();
+    showToast("رجع الهدف الافتراضي");
   }
 
   function renderWater() {
-    const goal = getActiveProgram().waterGoal;
+    const goal = getWaterGoal();
     document.getElementById("waterGoalLabel").textContent = goal.toLocaleString("en-US");
     document.getElementById("waterVal").textContent = state.water.toLocaleString("en-US");
     document.getElementById("waterRem").textContent = Math.max(0, goal - state.water).toLocaleString("en-US");
@@ -2472,7 +2492,7 @@ function syncScheduleToCloud(manualNotify = false, resetSent = false) {
         const doneTasksCount = prog.tasks.filter(t => s.tasks && s.tasks[t.id]).length;
         if (s.water > 0 || (s.meals && s.meals.length > 0) || doneTasksCount > 0) {
           activeDays++;
-          waterPctSum += Math.min(100, (s.water / prog.waterGoal) * 100);
+          waterPctSum += Math.min(100, (s.water / getWaterGoal(s.dayMode)) * 100);
           tasksPctSum += (doneTasksCount / prog.tasks.length) * 100;
           const dayCal = (s.meals || []).reduce((a, b) => a + b.cal, 0);
           if (dayCal > 0 && dayCal <= prog.calGoal + 100) calDaysInTarget++;
@@ -2640,7 +2660,7 @@ function syncScheduleToCloud(manualNotify = false, resetSent = false) {
     const offsetsTxt = offsets.map(o => `- ${o.name}: ${o.cal} سعرة (الساعة ${o.time})`).join("\n") || "- لا يوجد (التزام كامل)";
 
     const report = `تقرير يوم (${viewingDateStr}) — [${prog.label}]:
-💧 الماء: ${state.water} / ${prog.waterGoal.toLocaleString("en-US")} مل
+💧 الماء: ${state.water} / ${getWaterGoal().toLocaleString("en-US")} مل
 🔥 السعرات: ${totalCal} / ${prog.calGoal.toLocaleString("en-US")} سعرة | البروتين: ${totalPro} / ${prog.proGoal} غ
 ⚖️ الوزن: ${state.weight ? state.weight + " كغ" : "غير مسجّل"} (الهدف: ${getTargetWeight()} كغ)
 🕌 الصلاة: الفروض (${fardDone}/5) | السنن الرواتب والوتر (${rawatibDone}/12)
@@ -2687,7 +2707,7 @@ function syncScheduleToCloud(manualNotify = false, resetSent = false) {
       document.getElementById("mode-" + m).classList.toggle("active", state.dayMode === m);
     });
     const prog = getActiveProgram();
-    document.getElementById("activeTargetBadge").textContent = `${prog.waterGoal.toLocaleString("en-US")} مل`;
+    document.getElementById("activeTargetBadge").textContent = `${getWaterGoal().toLocaleString("en-US")} مل`;
   }
 
   function renderAll(shouldAutoScroll = false) {
