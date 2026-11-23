@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#f6ecda" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f6ecda" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b0f17" />
   <link rel="manifest" href="manifest.json" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -160,9 +161,10 @@
     .ing-row input { padding: 6px 8px; font-size: 13px; text-align: center; }
     .preset-ml-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px; }
     .code-box { background: #060910; border: 1px solid var(--border); border-radius: 10px; padding: 10px; font-family: monospace; font-size: 10px; color: #a5f3fc; text-align: left; direction: ltr; max-height: 140px; overflow-y: auto; white-space: pre; margin-top: 8px; }
-
-    /* ===== ثيم كريمي / أخضر / ذهبي ===== */
+    
+    /* ===== ثيم أخضر/ذهبي: فاتح افتراضياً، وليلي تلقائياً مع الجوال ===== */
 :root {
+  color-scheme: light dark;
   --bg:#f6ecda; --card:#fffaf0; --card-2:#f6eddb; --inset:#efe3cb;
   --border:#e6d7b8; --text:#1d3a2f; --muted:#8a7b5e;
   --green:#0f7a5a; --green-dim:rgba(15,122,90,.12);
@@ -170,23 +172,41 @@
   --red:#c0392b;   --red-dim:rgba(192,57,43,.10);
   --amber:#a8741a; --amber-dim:rgba(184,147,63,.18);
   --purple:#6b4fb8; --purple-dim:rgba(107,79,184,.12);
-  --gold:#b8933f;
+  --gold:#b8933f; --on-green:#fff;
   --shadow:0 6px 18px rgba(120,90,30,.10);
-  color-scheme: light;
+  --nav-bg:rgba(255,250,240,.88);
+  --glow-1:rgba(184,147,63,.20); --glow-2:rgba(15,122,90,.08);
+  --overlay:rgba(29,58,47,.55);
 }
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:#0b0f17; --card:#131b2b; --card-2:#1a2438; --inset:#090d14;
+    --border:#25324b; --text:#f1f5f9; --muted:#94a3b8;
+    --green:#10b981; --green-dim:rgba(16,185,129,.15);
+    --blue:#38bdf8;  --blue-dim:rgba(56,189,248,.15);
+    --red:#ef4444;   --red-dim:rgba(239,68,68,.15);
+    --amber:#f59e0b; --amber-dim:rgba(245,158,11,.15);
+    --purple:#a78bfa; --purple-dim:rgba(167,139,250,.15);
+    --gold:#d4b25c; --on-green:#062118;
+    --shadow:0 6px 18px rgba(0,0,0,.35);
+    --nav-bg:rgba(15,22,35,.88);
+    --glow-1:rgba(212,178,92,.10); --glow-2:rgba(16,185,129,.08);
+    --overlay:rgba(5,8,15,.88);
+  }
+}
+
 * { font-family:'Tajawal', system-ui, -apple-system, 'Segoe UI', Tahoma, sans-serif; }
 
 body {
   background:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='none' stroke='%23b8933f' stroke-opacity='.10'%3E%3Crect x='20' y='20' width='40' height='40'/%3E%3Crect x='20' y='20' width='40' height='40' transform='rotate(45 40 40)'/%3E%3C/g%3E%3C/svg%3E"),
-    radial-gradient(circle at 85% -10%, rgba(184,147,63,.20), transparent 45%),
-    radial-gradient(circle at 0% 30%, rgba(15,122,90,.08), transparent 40%),
+    radial-gradient(circle at 85% -10%, var(--glow-1), transparent 45%),
+    radial-gradient(circle at 0% 30%, var(--glow-2), transparent 40%),
     var(--bg);
   background-attachment: fixed;
   padding-bottom: 112px;
 }
 
-/* البطاقات والعناوين */
 .card, .header { border-radius:22px; box-shadow:var(--shadow); }
 .header h1 { font-family:'Aref Ruqaa','Tajawal',serif; font-weight:700; font-size:22px; color:var(--green); }
 .card-title { color:var(--text); font-size:15px; font-weight:800; }
@@ -195,7 +215,6 @@ body {
 .task-sub { font-size:12px; }
 .task-time { padding:5px 9px; }
 
-/* خلفيات كانت داكنة */
 .date-nav, .mode-pills, .cat-switch, .progress-wrap, .chart-wrap,
 select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--text); }
 .sys-alarm-link { color:var(--muted); }
@@ -203,13 +222,10 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
 .mode-btn.active, .cat-btn.active {
   background:var(--card); color:var(--green); border-color:var(--green); box-shadow:var(--shadow);
 }
-.modal-overlay { background:rgba(29,58,47,.55); }
+.modal-overlay { background:var(--overlay); }
 
-/* نص أبيض على الأخضر */
-.btn-green, .toast { color:#fff; }
-.task-item.done .checkbox { color:#fff; }
+.btn-green, .toast, .task-item.done .checkbox { color:var(--on-green); }
 
-/* بطاقة "المحطة القادمة" بشكل بطاقة الصلاة الداكنة */
 .next-card {
   background:linear-gradient(180deg,#1d4f80 0%,#0f2742 55%,#0a1622 100%);
   border:none; border-radius:24px; padding:16px; color:#fff;
@@ -221,14 +237,13 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
 .next-badge { background:rgba(53,224,166,.18); color:#35e0a6; }
 .next-card .btn-blue { background:rgba(255,255,255,.12); color:#fff; border-color:rgba(255,255,255,.25); }
 
-/* الشريط العائم بالأسفل */
 .nav {
   left:12px; right:12px; max-width:520px; margin:0 auto;
   bottom:calc(12px + env(safe-area-inset-bottom, 0px));
   padding:8px 6px; border:1px solid var(--border); border-radius:28px;
-  background:rgba(255,250,240,.88);
+  background:var(--nav-bg);
   -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px);
-  box-shadow:0 10px 30px rgba(90,65,20,.22);
+  box-shadow:0 10px 30px rgba(0,0,0,.25);
 }
 .nav-btn { color:var(--muted); }
 .nav-icon { font-size:20px; transition:.2s; }
@@ -236,7 +251,6 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
 .nav-btn.active { color:var(--green); font-weight:800; }
 .nav-btn.active .nav-icon { background:var(--green-dim); border-radius:14px; padding:2px 16px; }
 
-/* رسم الوزن (كانت ألوانه للخلفية الداكنة) */
 #weightChartBox text[fill="#f1f5f9"] { fill:var(--text); }
 #weightChartBox text[fill="#94a3b8"] { fill:var(--muted); }
 #weightChartBox text[fill="#f59e0b"] { fill:var(--amber); }
@@ -370,6 +384,18 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
   </div>
 </div>
 
+  <div id="waterTotalModal" class="modal-overlay">
+  <div class="modal-card" style="border-color: var(--blue);">
+    <div class="modal-title">تعديل عدّاد الماء اليومي</div>
+    <div class="modal-desc">اكتب الكمية الإجمالية اللي شربتها اليوم فعلياً (مل):</div>
+    <input type="number" id="waterTotalInput" inputmode="numeric" min="0" step="50" style="font-size:20px; font-weight:800; text-align:center; margin-bottom:14px;" />
+    <div class="btn-grid-2">
+      <button class="btn btn-green" onclick="saveWaterTotal()">حفظ</button>
+      <button class="btn" onclick="closeWaterTotalEdit()">إلغاء</button>
+    </div>
+  </div>
+</div>
+
 <div class="container">
   <!-- Top Strip: Sound, Cloud Push, Calendar Export -->
   <div class="alert-strip">
@@ -450,7 +476,7 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
     <div class="card">
       <div class="card-title">
         <span>💧 عدّاد الماء اليومي</span>
-        <span style="color:var(--blue); font-weight:900;"><span id="waterVal">0</span> / <span id="waterGoalLabel">3,250</span> مل</span>
+        <span style="color:var(--blue); font-weight:900; cursor:pointer; border-bottom:1px dashed var(--blue);" onclick="openWaterTotalEdit()"><span id="waterVal">0</span> / <span id="waterGoalLabel">3,250</span> مل ✏️</span>
       </div>
       <div class="progress-wrap">
         <div id="waterBar" class="progress-fill" style="width:0%; background:var(--blue);"></div>
@@ -2145,6 +2171,25 @@ function syncScheduleToCloud(manualNotify = false, resetSent = false) {
     saveState();
     renderWater();
     renderWeeklyStats();
+  }
+
+    function openWaterTotalEdit() {
+    const inp = document.getElementById("waterTotalInput");
+    inp.value = state.water;
+    document.getElementById("waterTotalModal").style.display = "flex";
+    setTimeout(() => inp.select(), 50);
+  }
+  function closeWaterTotalEdit() {
+    document.getElementById("waterTotalModal").style.display = "none";
+  }
+  function saveWaterTotal() {
+    const v = Math.max(0, parseInt(document.getElementById("waterTotalInput").value) || 0);
+    state.water = v;
+    saveState();
+    renderWater();
+    renderWeeklyStats();
+    closeWaterTotalEdit();
+    showToast(`تم تعيين العدّاد على ${v} مل`);
   }
 
   function renderWater() {
