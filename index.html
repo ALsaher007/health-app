@@ -464,7 +464,6 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
       <div class="card-title">
         <span>⏱️ مؤقت قفل الماء (الهضم)</span>
         <div style="display:flex; gap:5px;">
-          <a id="lockSysAlarmBtn" href="#" class="btn btn-amber" style="padding:4px 8px; font-size:11px; display:none;">⏰ منبّه جوال</a>
           <button class="btn" style="padding:4px 8px; font-size:11px;" onclick="playSingleChime()">🔔 تجربة</button>
         </div>
       </div>
@@ -1206,12 +1205,6 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
     return d.getHours() * 60 + d.getMinutes();
   }
 
-  function buildSystemAlarmIntent(mins, label) {
-    const norm = ((mins % 1440) + 1440) % 1440;
-    const h = Math.floor(norm / 60);
-    const m = norm % 60;
-    return `intent:#Intent;action=android.intent.action.SET_ALARM;i.android.intent.extra.alarm.HOUR=${h};i.android.intent.extra.alarm.MINUTES=${m};S.android.intent.extra.alarm.MESSAGE=${encodeURIComponent(label)};B.android.intent.extra.alarm.SKIP_UI=false;end`;
-  }
 
   // Smart Focus: Next Pending Station Card & Auto-Scroll
   let currentNextTaskId = null;
@@ -1744,7 +1737,6 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
       if (isSkipped) skippedCount++;
       const schedMins = getTaskMins(t.id);
       const timeLabel = formatMinsArabic(schedMins);
-      const alarmHref = buildSystemAlarmIntent(schedMins, t.text);
       const w = getTaskWater(t);
 
       let waterBtnHtml = w > 0 ? `<button class="edit-water-btn" onclick="openWaterEdit(event, '${t.id}')">💧 ${w} مل ✏️</button>` : "";
@@ -1785,7 +1777,6 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
         </div>
         <div class="time-col">
           <span class="task-time ${isSnoozed ? "snoozed" : ""}" onclick="openTimeEdit(event, '${t.id}')" title="اضغط لتعديل الوقت">${timeLabel}${isSnoozed ? " 💤" : ""}</span>
-          ${!isDone && !isSkipped ? `<a href="${alarmHref}" class="sys-alarm-link" title="ضبط منبّه سامسونغ">⏰ منبّه</a>` : ""}
         </div>
         <div class="task-body">
           <span class="task-text" onclick="toggleTask('${t.id}')">${t.text}</span>
@@ -2159,7 +2150,6 @@ function syncScheduleToCloud(manualNotify = false, resetSent = false) {
     const timer = document.getElementById("lockTimerText");
     const sub = document.getElementById("lockTimerSub");
     const cancelBtn = document.getElementById("cancelLockBtn");
-    const sysAlarmBtn = document.getElementById("lockSysAlarmBtn");
 
     if (!state.lockEnd) {
       box.className = "lock-box lock-open";
@@ -2167,7 +2157,6 @@ function syncScheduleToCloud(manualNotify = false, resetSent = false) {
       timer.style.display = "none";
       sub.style.display = "none";
       cancelBtn.style.display = "none";
-      sysAlarmBtn.style.display = "none";
       return;
     }
 
@@ -2185,8 +2174,6 @@ function syncScheduleToCloud(manualNotify = false, resetSent = false) {
 
     const endD = new Date(state.lockEnd);
     const endMins = endD.getHours() * 60 + endD.getMinutes();
-    sysAlarmBtn.href = buildSystemAlarmIntent(endMins, "فتح باب الماء بعد الهضم");
-    sysAlarmBtn.style.display = "inline-flex";
     cancelBtn.style.display = "block";
     timer.style.display = "block";
 
