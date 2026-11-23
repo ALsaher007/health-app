@@ -954,9 +954,22 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
 
   // Dynamic Date & Auto-Rollover State
   const STORAGE_PREFIX = "aburaslan_fit_v6_";
-  function getTodayDateStr() {
-    return new Date().toLocaleDateString("en-CA");
-  }
+ function getTodayDateStr() {
+  const now = new Date();
+
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+  function getLocalDateString(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
 
   let currentTodayStr = getTodayDateStr();
   let viewingDateStr = currentTodayStr;
@@ -2518,7 +2531,7 @@ function syncScheduleToCloud(manualNotify = false, resetSent = false) {
     for (let i = 0; i < 7; i++) {
       const dt = new Date();
       dt.setDate(dt.getDate() - i);
-      const dStr = dt.toLocaleDateString("en-CA");
+      const dStr = getLocalDateString(dt);
       const raw = localStorage.getItem(STORAGE_PREFIX + dStr);
       if (!raw) continue;
       try {
