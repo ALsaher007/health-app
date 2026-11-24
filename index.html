@@ -264,6 +264,15 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
 .task-item.skipped .task-sub { text-decoration:line-through; text-decoration-color:var(--red); text-decoration-thickness:2px; }
 .task-item.skipped .skipbox { background:var(--red); color:#fff; opacity:1; }
     
+
+    /* القيم الغذائية */
+    .nutr-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
+    .nutr-box { background:var(--card-2); border:1px solid var(--border); border-radius:12px; padding:9px 10px; display:flex; justify-content:space-between; align-items:center; gap:6px; font-size:12px; }
+    .nutr-val { font-weight:900; white-space:nowrap; }
+    .nutr-goal { font-weight:400; color:var(--muted); }
+    .nutr-box.over { border-color:rgba(239,68,68,.55); }
+    .nutr-box.over .nutr-val { color:var(--red); }
+    .nutr-box.ok .nutr-val { color:var(--green); }
   </style>
 </head>
 <body>
@@ -405,6 +414,20 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
   </div>
 </div>
 
+  <div id="nutrGoalsModal" class="modal-overlay">
+  <div class="modal-card" style="border-color: var(--green); text-align:right;">
+    <div class="modal-title" style="text-align:center;">أهدافي الغذائية اليومية</div>
+    <div class="modal-desc" style="text-align:center;">اكتب الرقم اللي بدك تلتزم فيه، أو اترك الحقل فاضي بدون هدف. (السعرات والبروتين من البرنامج نفسه.)</div>
+    <div class="form-row-eq"><div><label style="font-size:11px; color:var(--muted);">كارب (غ) - حد أقصى</label><input type="number" id="ng_carb" inputmode="decimal" /></div><div><label style="font-size:11px; color:var(--muted);">دهون (غ) - حد أقصى</label><input type="number" id="ng_fat" inputmode="decimal" /></div></div>
+    <div class="form-row-eq"><div><label style="font-size:11px; color:var(--muted);">ألياف (غ) - حد أدنى</label><input type="number" id="ng_fib" inputmode="decimal" /></div><div><label style="font-size:11px; color:var(--muted);">سكريات (غ) - حد أقصى</label><input type="number" id="ng_sug" inputmode="decimal" /></div></div>
+    <div class="form-row-eq"><div><label style="font-size:11px; color:var(--muted);">مشبعة (غ) - حد أقصى</label><input type="number" id="ng_sat" inputmode="decimal" /></div><div><label style="font-size:11px; color:var(--muted);">صوديوم (مغ) - حد أقصى</label><input type="number" id="ng_sod" inputmode="decimal" /></div></div>
+    <div class="btn-grid-2" style="margin-top:6px;">
+      <button class="btn btn-green" onclick="saveNutrGoals()">حفظ</button>
+      <button class="btn" onclick="closeNutrGoals()">إلغاء</button>
+    </div>
+  </div>
+</div>
+
 <div class="container">
   <!-- Top Strip: Sound, Cloud Push, Calendar Export -->
   <div class="alert-strip">
@@ -541,6 +564,15 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
       </div>
     </div>
 
+    <div class="card">
+      <div class="card-title">
+        <span>🥗 القيم الغذائية اليومية</span>
+        <button class="btn" style="padding:4px 9px; font-size:11px;" onclick="openNutrGoals()">⚙️ أهدافي</button>
+      </div>
+      <div id="nutrGrid" class="nutr-grid"></div>
+      <div style="font-size:10px; color:var(--muted); margin-top:8px;">القيم تقديرية من قواعد بيانات تغذية عامة، والصوديوم أقلها دقة. الأحمر = تجاوزت الهدف، الأخضر = حققت الحد الأدنى.</div>
+    </div>
+
     <!-- Categorized Gram Calculator -->
     <div class="card">
       <div class="card-title"><span>⚖️ حاسبة الأكل الإضافي بالغرام (مرتبة أبجدياً)</span></div>
@@ -554,9 +586,16 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
         <select id="foodSelect" onchange="updateFoodPreview()"></select>
         <input type="number" id="foodGrams" placeholder="الوزن (غ)" value="100" oninput="updateFoodPreview()" />
       </div>
-      <div id="customMacroInputs" class="form-row" style="display:none;">
-        <input type="number" id="customCal100" placeholder="سعرات كل 100غ" oninput="updateFoodPreview()" />
-        <input type="number" id="customPro100" placeholder="بروتين كل 100غ" oninput="updateFoodPreview()" />
+      <div id="customMacroInputs" style="display:none; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
+        <input type="text" id="custom_name" placeholder="اسم الأكلة" style="grid-column:1/-1;" />
+        <input type="number" id="custom_cal" placeholder="سعرات / 100غ" inputmode="decimal" oninput="updateFoodPreview()" />
+        <input type="number" id="custom_pro" placeholder="بروتين / 100غ" inputmode="decimal" oninput="updateFoodPreview()" />
+        <input type="number" id="custom_carb" placeholder="كارب / 100غ" inputmode="decimal" oninput="updateFoodPreview()" />
+        <input type="number" id="custom_fat" placeholder="دهون / 100غ" inputmode="decimal" oninput="updateFoodPreview()" />
+        <input type="number" id="custom_fib" placeholder="ألياف / 100غ" inputmode="decimal" oninput="updateFoodPreview()" />
+        <input type="number" id="custom_sug" placeholder="سكريات / 100غ" inputmode="decimal" oninput="updateFoodPreview()" />
+        <input type="number" id="custom_sat" placeholder="مشبعة / 100غ" inputmode="decimal" oninput="updateFoodPreview()" />
+        <input type="number" id="custom_sod" placeholder="صوديوم مغ / 100غ" inputmode="decimal" oninput="updateFoodPreview()" />
       </div>
       <div id="foodPreview" class="preview-pill">النتيجة: 0 سعرة | 0 غ بروتين</div>
       <button class="btn btn-green" style="width:100%;" onclick="addFoodItem()">+ إضافة إلى وجبات اليوم</button>
@@ -665,54 +704,145 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
 </div>
 
 <script>
-  // 1. قائمة الأطعمة مرتبة أبجدياً (لكل 100غ)
+  // ===== القيم الغذائية لكل 100غ: [سعرات, بروتين, كارب, دهون, ألياف, سكريات, دهون مشبعة, صوديوم مغ] =====
+  const NUTR_KEYS = ["cal", "pro", "carb", "fat", "fib", "sug", "sat", "sod"];
+  const NUTR_LABELS = { cal: "السعرات", pro: "البروتين", carb: "الكربوهيدرات", fat: "الدهون", fib: "الألياف", sug: "السكريات", sat: "الدهون المشبعة", sod: "الصوديوم" };
+  const NUTR_UNITS = { cal: "سعرة", pro: "غ", carb: "غ", fat: "غ", fib: "غ", sug: "غ", sat: "غ", sod: "مغ" };
+  const NUTR_TYPE = { cal: "max", pro: "min", carb: "max", fat: "max", fib: "min", sug: "max", sat: "max", sod: "max" };
+  const mkFood = (name, v) => ({ name, cal: v[0], pro: v[1], carb: v[2], fat: v[3], fib: v[4], sug: v[5], sat: v[6], sod: v[7] });
+
   const SAVORY_FOODS = [
-    { name: "أفوكادو", cal: 160, pro: 2 },
-    { name: "أمريكانو سادة", cal: 2, pro: 0 },
-    { name: "برغل ببندورة التركي", cal: 115, pro: 3.2 },
-    { name: "برغل مطبوخ سادة", cal: 86, pro: 3 },
-    { name: "بطاطا مسلوقة سادة", cal: 87, pro: 2 },
-    { name: "بياض بيض مسلوق", cal: 52, pro: 11 },
-    { name: "بيض كامل مسلوق", cal: 143, pro: 12.6 },
-    { name: "تونة مصفاية", cal: 115, pro: 25 },
-    { name: "جوز نيء", cal: 654, pro: 15 },
-    { name: "حمص مطبوخ التركي", cal: 165, pro: 8.9 },
-    { name: "زيت زيتون", cal: 884, pro: 0 },
-    { name: "زيتون أسود/أخضر", cal: 145, pro: 1 },
-    { name: "سلطة خضراء مشكلة", cal: 20, pro: 1 },
-    { name: "صدر مطبوخ مع الكبسة", cal: 195, pro: 29 },
-    { name: "صدر مطبوخ مع المندي", cal: 185, pro: 30 },
-    { name: "صدور دجاج مسلوقة/مشوية", cal: 165, pro: 31 },
-    { name: "فخاد مطبوخة مع المندي أو الكبسة", cal: 235, pro: 24 },
-    { name: "كاجو نيء", cal: 553, pro: 18 },
-    { name: "كبسة سورية - أرز", cal: 155, pro: 3 },
-    { name: "لبن رايب", cal: 60, pro: 3.5 },
-    { name: "لحم مشوي أو مسلوق هبر", cal: 210, pro: 27 },
-    { name: "لوز نيء", cal: 579, pro: 21 },
-    { name: "مندي سوري - أرز", cal: 150, pro: 2.8 },
+    mkFood("أفوكادو", [160, 2, 8.5, 14.7, 6.7, 0.7, 2.1, 7]),
+    mkFood("أمريكانو سادة", [2, 0, 0, 0, 0, 0, 0, 2]),
+    mkFood("برغل ببندورة التركي", [115, 3.2, 19, 3.2, 3.5, 1.5, 0.5, 280]),
+    mkFood("برغل مطبوخ سادة", [86, 3, 18.6, 0.2, 4.5, 0.1, 0, 5]),
+    mkFood("بطاطا مسلوقة سادة", [87, 2, 20.1, 0.1, 1.8, 0.9, 0, 4]),
+    mkFood("بياض بيض مسلوق", [52, 11, 0.7, 0.2, 0, 0.7, 0, 166]),
+    mkFood("بيض كامل مسلوق", [143, 12.6, 0.7, 9.5, 0, 0.4, 3.1, 140]),
+    mkFood("تونة مصفاية", [115, 25, 0, 1, 0, 0, 0.3, 340]),
+    mkFood("جوز نيء", [654, 15, 13.7, 65.2, 6.7, 2.6, 6.1, 2]),
+    mkFood("حمص مطبوخ التركي", [165, 8.9, 27.4, 2.6, 7.6, 4.8, 0.3, 7]),
+    mkFood("زيت زيتون", [884, 0, 0, 100, 0, 0, 13.8, 2]),
+    mkFood("زيتون أسود/أخضر", [145, 1, 3.8, 15.3, 3.3, 0, 2, 1100]),
+    mkFood("سلطة خضراء مشكلة", [20, 1, 3.5, 0.2, 1.5, 2, 0, 15]),
+    mkFood("صدر مطبوخ مع الكبسة", [195, 29, 2, 7.7, 0.2, 0.3, 2.2, 380]),
+    mkFood("صدر مطبوخ مع المندي", [185, 30, 0.5, 6.5, 0, 0, 1.8, 350]),
+    mkFood("صدور دجاج مسلوقة/مشوية", [165, 31, 0, 3.6, 0, 0, 1, 74]),
+    mkFood("فخاد مطبوخة مع المندي أو الكبسة", [235, 24, 1, 15, 0, 0, 4.2, 390]),
+    mkFood("كاجو نيء", [553, 18, 30.2, 43.9, 3.3, 5.9, 7.8, 12]),
+    mkFood("كبسة سورية - أرز", [155, 3, 27, 3.5, 0.8, 0.5, 0.7, 320]),
+    mkFood("لبن رايب", [60, 3.5, 4.5, 3, 0, 4.5, 1.9, 45]),
+    mkFood("لحم مشوي أو مسلوق هبر", [210, 27, 0, 11, 0, 0, 4.5, 70]),
+    mkFood("لوز نيء", [579, 21, 21.6, 49.9, 12.5, 4.4, 3.8, 1]),
+    mkFood("مندي سوري - أرز", [150, 2.8, 28, 2.5, 0.7, 0.3, 0.5, 300]),
     { name: "➕ إدخال يدوي لأكلة مخصصة", cal: 0, pro: 0, custom: true }
   ];
 
-  // 2. قائمة الفواكه والحليب والقشطة والعسل مرتبة أبجدياً (لكل 100غ)
   const SWEET_DAIRY_FOODS = [
-    { name: "إجاص", cal: 57, pro: 0.4 },
-    { name: "برتقال", cal: 47, pro: 0.9 },
-    { name: "تفاح", cal: 52, pro: 0.3 },
-    { name: "تمر", cal: 280, pro: 2.5 },
-    { name: "تين مجفف", cal: 249, pro: 3.3 },
-    { name: "حليب كامل الدسم", cal: 61, pro: 3.2 },
-    { name: "خوخ أسود", cal: 46, pro: 0.7 },
-    { name: "عسل نحل", cal: 304, pro: 0.3 },
-    { name: "عنب أحمر", cal: 69, pro: 0.7 },
-    { name: "عنب أخضر", cal: 69, pro: 0.7 },
-    { name: "قشطة البيم الجاهزة - كايماك", cal: 580, pro: 2.5 },
-    { name: "قشطة الحليب المغلي على الوجه", cal: 340, pro: 2.5 },
-    { name: "كيوي", cal: 61, pro: 1.1 },
-    { name: "موز", cal: 89, pro: 1.1 },
-    { name: "يوسفي", cal: 53, pro: 0.8 }
+    mkFood("إجاص", [57, 0.4, 15.2, 0.1, 3.1, 9.8, 0, 1]),
+    mkFood("برتقال", [47, 0.9, 11.8, 0.1, 2.4, 9.4, 0, 0]),
+    mkFood("تفاح", [52, 0.3, 13.8, 0.2, 2.4, 10.4, 0, 1]),
+    mkFood("تمر", [280, 2.5, 75, 0.4, 6.7, 66, 0, 2]),
+    mkFood("تين مجفف", [249, 3.3, 63.9, 0.9, 9.8, 47.9, 0.1, 10]),
+    mkFood("حليب كامل الدسم", [61, 3.2, 4.8, 3.3, 0, 4.8, 1.9, 43]),
+    mkFood("خوخ أسود", [46, 0.7, 11.4, 0.3, 1.4, 9.9, 0, 0]),
+    mkFood("عسل نحل", [304, 0.3, 82.4, 0, 0.2, 82.1, 0, 4]),
+    mkFood("عنب أحمر", [69, 0.7, 18.1, 0.2, 0.9, 15.5, 0.1, 2]),
+    mkFood("عنب أخضر", [69, 0.7, 18.1, 0.2, 0.9, 15.5, 0.1, 2]),
+    mkFood("قشطة البيم الجاهزة - كايماك", [580, 2.5, 3, 60, 0, 3, 38, 30]),
+    mkFood("قشطة الحليب المغلي على الوجه", [340, 2.5, 3.5, 35, 0, 3.5, 22, 30]),
+    mkFood("كيوي", [61, 1.1, 14.7, 0.5, 3, 9, 0, 3]),
+    mkFood("موز", [89, 1.1, 22.8, 0.3, 2.6, 12.2, 0.1, 1]),
+    mkFood("يوسفي", [53, 0.8, 13.3, 0.3, 1.8, 10.6, 0, 2])
   ];
 
   const ALL_FOOD_ITEMS = [...SAVORY_FOODS.filter(x => !x.custom), ...SWEET_DAIRY_FOODS].sort((a, b) => a.name.localeCompare(b.name, "ar"));
+
+  // ===== أدوات حساب القيم الغذائية =====
+  const FOOD_BY_NAME = {};
+  [...SAVORY_FOODS, ...SWEET_DAIRY_FOODS].forEach(f => { if (!f.custom) FOOD_BY_NAME[f.name] = f; });
+  const r1 = n => Math.round(n * 10) / 10;
+  const emptyNutr = () => ({ cal: 0, pro: 0, carb: 0, fat: 0, fib: 0, sug: 0, sat: 0, sod: 0 });
+  function roundNutr(t) {
+    return { cal: Math.round(t.cal), pro: r1(t.pro), carb: r1(t.carb), fat: r1(t.fat), fib: r1(t.fib), sug: r1(t.sug), sat: r1(t.sat), sod: Math.round(t.sod) };
+  }
+  function makeMealItem(f, grams) {
+    const it = { name: f.name, grams: grams };
+    NUTR_KEYS.forEach(k => { it[k + "100"] = f[k] || 0; });
+    return it;
+  }
+  // أصناف الوجبات القديمة فيها سعرات وبروتين فقط، والباقي بيُجلب من القاعدة بالاسم
+  function itemPer100(it, k) {
+    if (typeof it[k + "100"] === "number") return it[k + "100"];
+    const f = FOOD_BY_NAME[it.name];
+    return f && typeof f[k] === "number" ? f[k] : 0;
+  }
+  function calcItemsMacros(items) {
+    const t = emptyNutr();
+    items.forEach(it => NUTR_KEYS.forEach(k => { t[k] += (itemPer100(it, k) * it.grams) / 100; }));
+    return roundNutr(t);
+  }
+  function sumMeals(meals) {
+    const t = emptyNutr();
+    meals.forEach(m => NUTR_KEYS.forEach(k => { t[k] += (m[k] || 0); }));
+    return roundNutr(t);
+  }
+  function nutrLine(t) {
+    return `${t.cal} سعرة | ${t.pro}غ بروتين | ${t.carb}غ كارب | ${t.fat}غ دهون | ${t.fib}غ ألياف | ${t.sug}غ سكريات | ${t.sat}غ مشبعة | ${t.sod}مغ صوديوم`;
+  }
+  function readCustomNum(k) {
+    const el = document.getElementById("custom_" + k);
+    return el ? (parseFloat(el.value) || 0) : 0;
+  }
+  function foodNutrFor(f, grams) {
+    const t = emptyNutr();
+    NUTR_KEYS.forEach(k => {
+      const per100 = f.custom ? readCustomNum(k) : (f[k] || 0);
+      t[k] = (per100 * grams) / 100;
+    });
+    return roundNutr(t);
+  }
+  function getNutrGoals() {
+    try { return JSON.parse(localStorage.getItem("aburaslan_nutr_goals")) || {}; } catch (e) { return {}; }
+  }
+  function nutrGoalFor(k) {
+    const p = getActiveProgram();
+    if (k === "cal") return p.calGoal;
+    if (k === "pro") return p.proGoal;
+    const g = getNutrGoals()[k];
+    return g > 0 ? g : null;
+  }
+  function renderNutritionCard(t) {
+    const box = document.getElementById("nutrGrid");
+    if (!box) return;
+    box.innerHTML = NUTR_KEYS.map(k => {
+      const goal = nutrGoalFor(k);
+      let cls = "";
+      if (goal) cls = NUTR_TYPE[k] === "max" ? (t[k] > goal ? "over" : "") : (t[k] >= goal ? "ok" : "");
+      const goalHtml = goal ? ` <span class="nutr-goal">/ ${goal.toLocaleString("en-US")}</span>` : "";
+      return `<div class="nutr-box ${cls}"><span>${NUTR_LABELS[k]}</span><span class="nutr-val">${t[k].toLocaleString("en-US")} ${NUTR_UNITS[k]}${goalHtml}</span></div>`;
+    }).join("");
+  }
+  const NUTR_GOAL_KEYS = ["carb", "fat", "fib", "sug", "sat", "sod"];
+  function openNutrGoals() {
+    const g = getNutrGoals();
+    NUTR_GOAL_KEYS.forEach(k => { document.getElementById("ng_" + k).value = g[k] > 0 ? g[k] : ""; });
+    document.getElementById("nutrGoalsModal").style.display = "flex";
+  }
+  function closeNutrGoals() {
+    document.getElementById("nutrGoalsModal").style.display = "none";
+  }
+  function saveNutrGoals() {
+    const g = {};
+    NUTR_GOAL_KEYS.forEach(k => {
+      const v = parseFloat(document.getElementById("ng_" + k).value);
+      if (v > 0) g[k] = v;
+    });
+    localStorage.setItem("aburaslan_nutr_goals", JSON.stringify(g));
+    closeNutrGoals();
+    renderMeals();
+    showToast("تم حفظ أهدافك الغذائية");
+  }
 
   // 3. البرامج التلاتة المعتمدة
   const PROGRAMS = {
@@ -1157,15 +1287,6 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
     return state.customMeals[key] || taskObj.defaultItems;
   }
 
-  function calcItemsMacros(items) {
-    let cal = 0, pro = 0;
-    items.forEach(it => {
-      cal += (it.cal100 * it.grams) / 100;
-      pro += (it.pro100 * it.grams) / 100;
-    });
-    return { cal: Math.round(cal), pro: Math.round(pro * 10) / 10 };
-  }
-
   function formatItemsSummary(items) {
     return items.map(it => `${it.name} (${it.grams}غ)`).join(" + ");
   }
@@ -1543,7 +1664,7 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
       box.appendChild(row);
     });
     const totals = calcItemsMacros(tempMealItems);
-    document.getElementById("mealEditSummary").textContent = `الإجمالي: ${totals.cal} سعرة | ${totals.pro} غ بروتين`;
+    document.getElementById("mealEditSummary").textContent = "الإجمالي: " + nutrLine(totals);
   }
 
   function updateTempIngGrams(idx, val) {
@@ -1561,7 +1682,7 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
     const f = ALL_FOOD_ITEMS[idx];
     const grams = parseFloat(document.getElementById("mealAddGrams").value) || 100;
     if (!f || grams <= 0) return;
-    tempMealItems.push({ name: f.name, grams: grams, cal100: f.cal, pro100: f.pro });
+    tempMealItems.push(makeMealItem(f, grams));
     renderMealIngredientsEditor();
   }
 
@@ -1576,8 +1697,7 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
       const totals = calcItemsMacros(items);
       const existingIdx = state.meals.findIndex(m => m.taskId === editingMealTaskId);
       if (existingIdx !== -1) {
-        state.meals[existingIdx].cal = totals.cal;
-        state.meals[existingIdx].pro = totals.pro;
+        Object.assign(state.meals[existingIdx], totals);
         state.meals[existingIdx].name = `${t.text.replace(/^[^\s]+\s/, "")} [${formatItemsSummary(items)}]`;
       }
       renderMeals();
@@ -1654,7 +1774,7 @@ select, input, textarea, .sys-alarm-link { background:var(--inset); color:var(--
         const mealLabel = `${taskObj.text.replace(/^[^\s]+\s/, "")} [${formatItemsSummary(items)}]`;
         const exists = state.meals.some(m => m.taskId === id);
         if (!exists) {
-          state.meals.push({ taskId: id, name: mealLabel, cal: totals.cal, pro: totals.pro });
+          state.meals.push(Object.assign({ taskId: id, name: mealLabel }, totals));
           toastParts.push(`+${totals.cal} سعرة`);
         }
         renderMeals();
@@ -2288,21 +2408,9 @@ function syncScheduleToCloud(manualNotify = false, resetSent = false) {
     const idx = parseInt(document.getElementById("foodSelect").value) || 0;
     const f = list[idx];
     const grams = parseFloat(document.getElementById("foodGrams").value) || 0;
-    const customBox = document.getElementById("customMacroInputs");
-
-    if (f && f.custom) {
-      customBox.style.display = "grid";
-      const c100 = parseFloat(document.getElementById("customCal100").value) || 0;
-      const p100 = parseFloat(document.getElementById("customPro100").value) || 0;
-      const cal = Math.round((c100 * grams) / 100);
-      const pro = Math.round(((p100 * grams) / 100) * 10) / 10;
-      document.getElementById("foodPreview").textContent = `النتيجة: ${cal} سعرة | ${pro} غ بروتين`;
-    } else if (f) {
-      customBox.style.display = "none";
-      const cal = Math.round((f.cal * grams) / 100);
-      const pro = Math.round(((f.pro * grams) / 100) * 10) / 10;
-      document.getElementById("foodPreview").textContent = `النتيجة: ${cal} سعرة | ${pro} غ بروتين`;
-    }
+    if (!f) return;
+    document.getElementById("customMacroInputs").style.display = f.custom ? "grid" : "none";
+    document.getElementById("foodPreview").textContent = "النتيجة: " + nutrLine(foodNutrFor(f, grams));
   }
 
   function addFoodItem() {
@@ -2312,19 +2420,13 @@ function syncScheduleToCloud(manualNotify = false, resetSent = false) {
     const grams = parseFloat(document.getElementById("foodGrams").value) || 0;
     if (!f || grams <= 0) return;
 
-    let c100 = f.cal, p100 = f.pro;
-    if (f.custom) {
-      c100 = parseFloat(document.getElementById("customCal100").value) || 0;
-      p100 = parseFloat(document.getElementById("customPro100").value) || 0;
-    }
-
-    const cal = Math.round((c100 * grams) / 100);
-    const pro = Math.round(((p100 * grams) / 100) * 10) / 10;
-    state.meals.push({ name: `${f.name} (${grams}غ)`, cal, pro });
+    const t = foodNutrFor(f, grams);
+    const label = f.custom ? ((document.getElementById("custom_name").value || "").trim() || "أكلة مخصصة") : f.name;
+    state.meals.push(Object.assign({ name: `${label} (${grams}غ)` }, t));
     saveState();
     renderMeals();
     renderWeeklyStats();
-    showToast(`تمت الإضافة (+${cal} سعرة)`);
+    showToast(`تمت الإضافة (+${t.cal} سعرة)`);
   }
 
    function deleteMeal(i) {
@@ -2357,6 +2459,7 @@ function syncScheduleToCloud(manualNotify = false, resetSent = false) {
           <div>
             <div style="font-weight:700;">${esc(m.name)}</div>
             <div style="font-size:11px; color:var(--muted);">${m.cal} سعرة • ${m.pro} غ بروتين</div>
+            ${m.carb !== undefined ? `<div style="font-size:10px; color:var(--muted);">كارب ${m.carb}غ • دهون ${m.fat}غ • ألياف ${m.fib}غ • سكريات ${m.sug}غ • مشبعة ${m.sat}غ • صوديوم ${m.sod}مغ</div>` : ""}
           </div>
           <button class="del-btn" onclick="deleteMeal(${i})">×</button>
         `;
@@ -2375,6 +2478,7 @@ function syncScheduleToCloud(manualNotify = false, resetSent = false) {
     const bar = document.getElementById("calBar");
     bar.style.width = pct + "%";
     bar.style.background = totalCal > goal ? "var(--red)" : "var(--green)";
+    renderNutritionCard(sumMeals(state.meals));
   }
 
   // Prayers & Shafi'i Rawatib
@@ -2701,6 +2805,7 @@ function syncScheduleToCloud(manualNotify = false, resetSent = false) {
     const report = `تقرير يوم (${viewingDateStr}) — [${prog.label}]:
 💧 الماء: ${state.water} / ${getWaterGoal().toLocaleString("en-US")} مل
 🔥 السعرات: ${totalCal} / ${prog.calGoal.toLocaleString("en-US")} سعرة | البروتين: ${totalPro} / ${prog.proGoal} غ
+🥗 القيم الغذائية: ${nutrLine(sumMeals(state.meals))}
 ⚖️ الوزن: ${state.weight ? state.weight + " كغ" : "غير مسجّل"} (الهدف: ${getTargetWeight()} كغ)
 🕌 الصلاة: الفروض (${fardDone}/5) | السنن الرواتب والوتر (${rawatibDone}/12)
 ✅ المهام المنجزة وأوقاتها:\n- ${doneTasks}
